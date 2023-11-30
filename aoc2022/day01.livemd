@@ -29,6 +29,16 @@ defmodule PartOne do
   end
 
   def run(input) do
+    input
+    |> String.split("\n")
+    |> Enum.reduce({0, 0}, fn line, {leader, count} ->
+      with {value, _} <- Integer.parse(line) do
+        {leader, count + value}
+      else
+        :error -> if count > leader, do: {count, 0}, else: {leader, 0}
+      end
+    end)
+    |> elem(0)
   end
 end
 ```
@@ -42,8 +52,23 @@ defmodule PartOneTest do
   use ExUnit.Case, async: true
   import PartOne
 
-  @input ""
-  @expected nil
+  @input """
+  1000
+  2000
+  3000
+
+  4000
+
+  5000
+  6000
+
+  7000
+  8000
+  9000
+
+  10000
+  """
+  @expected 24000
 
   test "part one" do
     actual = run(@input)
@@ -74,6 +99,21 @@ defmodule PartTwo do
   end
 
   def run(input) do
+    input
+    |> String.split("\n")
+    |> Enum.reduce({[0, 0, 0], 0}, fn line, {leaders, count} ->
+      with :error <- Integer.parse(line) do
+        if count > Enum.at(leaders, -1) do
+          {leaders |> List.replace_at(-1, count) |> Enum.sort() |> Enum.reverse(), 0}
+        else
+          {leaders, 0}
+        end
+      else
+        {value, _} -> {leaders, count + value}
+      end
+    end)
+    |> elem(0)
+    |> Enum.sum()
   end
 end
 ```
@@ -87,8 +127,23 @@ defmodule PartTwoTest do
   use ExUnit.Case, async: true
   import PartTwo
 
-  @input ""
-  @expected nil
+  @input """
+  1000
+  2000
+  3000
+
+  4000
+
+  5000
+  6000
+
+  7000
+  8000
+  9000
+
+  10000
+  """
+  @expected 45000
 
   test "part two" do
     actual = run(@input)
@@ -105,4 +160,4 @@ ExUnit.run()
 PartTwo.solve(puzzle_input)
 ```
 
-<!-- livebook:{"offset":1483,"stamp":{"token":"XCP.piiV3_Qj1knnnrh78VrDVl6SHDx3-APfMYCaXIcuE7g-fu_unQvvQYVNZ9RJ1WvVXrwBlEyt92pnWoO2Ke2bGGmLWlfKApTKC418TnVV62CKETlAHRg","version":2}} -->
+<!-- livebook:{"offset":2369,"stamp":{"token":"XCP.2QnhEpiVJtnNGlq9Ijo3_45p16hZz8T_1tM3Ws5pURl64-O3G3MKb77Wo84fdVhqcwiwvF7w7ysZBckmcXjFoHFVfwiLOGgHsy_pDlUW_ipAEqopxVY","version":2}} -->
