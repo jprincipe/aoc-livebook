@@ -17,18 +17,42 @@ Mix.install([
 
 <!-- livebook:{"branch_parent_index":0} -->
 
-## Part 1
+## Part 1 & 2
 
 ## Code
 
 ```elixir
-defmodule PartOne do
-  def solve(input) do
-    IO.puts("--- Part One ---")
-    IO.puts("Result: #{run(input)}")
+defmodule DaySix do
+  def find_marker(data, marker_length) do
+    Enum.reduce_while(1..String.length(data), :unused, fn index, _acc ->
+      if marker?(data, index, marker_length) do
+        {:halt, index}
+      else
+        {:cont, index}
+      end
+    end)
   end
 
-  def run(input) do
+  def marker?(data, index, marker_length) do
+    data
+    |> sample(index, marker_length)
+    |> String.graphemes()
+    |> Enum.uniq()
+    |> Enum.count()
+    |> Kernel.==(marker_length)
+  end
+
+  def sample(data, index, length), do: String.slice(data, max(0, index - length)..(index - 1))
+
+  def solve(input, length) do
+    IO.puts("--- Part One ---")
+    IO.puts("Result: #{run(input, length)}")
+  end
+
+  def run(input, length) do
+    input
+    |> String.trim()
+    |> find_marker(length)
   end
 end
 ```
@@ -38,15 +62,15 @@ end
 ```elixir
 ExUnit.start(autorun: false)
 
-defmodule PartOneTest do
+defmodule DaySixTest do
   use ExUnit.Case, async: true
-  import PartOne
+  import DaySix
 
-  @input ""
-  @expected nil
+  @input "mjqjpqmgbljsphdztnvjfqwrcgsmlb"
+  @expected 7
 
   test "part one" do
-    actual = run(@input)
+    actual = run(@input, 4)
     assert actual == @expected
   end
 end
@@ -54,55 +78,16 @@ end
 ExUnit.run()
 ```
 
-## Solution
+## Solution - Part 1
 
 ```elixir
-PartOne.solve(puzzle_input)
+DaySix.solve(puzzle_input, 4)
 ```
 
-<!-- livebook:{"branch_parent_index":4} -->
-
-## Part 2
-
-## Code
+## Solution - Part 2
 
 ```elixir
-defmodule PartTwo do
-  def solve(input) do
-    IO.puts("--- Part Two ---")
-    IO.puts("Result: #{run(input)}")
-  end
-
-  def run(input) do
-  end
-end
+DaySix.solve(puzzle_input, 14)
 ```
 
-## Test
-
-```elixir
-ExUnit.start(autorun: false)
-
-defmodule PartTwoTest do
-  use ExUnit.Case, async: true
-  import PartTwo
-
-  @input ""
-  @expected nil
-
-  test "part two" do
-    actual = run(@input)
-    assert actual == @expected
-  end
-end
-
-ExUnit.run()
-```
-
-## Solution
-
-```elixir
-PartTwo.solve(puzzle_input)
-```
-
-<!-- livebook:{"offset":1483,"stamp":{"token":"XCP.YiNweQA41LRdjh3keJTAugSvHTv_LyDV27dquA4-t7jN5IdTLMahE455xl2AvXDEoKR_7rnAr-UxO5BUXa-UQgSaGI-Bv1pXIKa56aT72_HiJuSnlq8","version":2}} -->
+<!-- livebook:{"offset":1669,"stamp":{"token":"XCP.8DpGIzzHobczItVibP40OnLa7oAixpe7k_VNG8ykmUPzypEIjeodeD90kZISYbFt9IWiyE36X_xyMhgwZ7mxrBHjrC4EfJkkM50fjjkYVS0WfOHEqwY","version":2}} -->
