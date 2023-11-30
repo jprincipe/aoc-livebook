@@ -23,12 +23,86 @@ Mix.install([
 
 ```elixir
 defmodule PartOne do
+  def parse_line(line, {:stack, stacks}) do
+    if String.trim(line) == "" do
+      {:moves, build_stacks(stacks)}
+    else
+      {:stack, [parse_row(line) | stacks]}
+    end
+  end
+
+  def parse_line(line, {:moves, stacks}) do
+    {:moves, line |> parse_move() |> perform_move(stacks)}
+  end
+
+  def parse_move(move) do
+    parts = String.split(move, " ")
+    count = Enum.at(parts, 1) |> String.trim() |> String.to_integer()
+    from = Enum.at(parts, 3) |> String.trim()
+    to = Enum.at(parts, 5) |> String.trim()
+
+    {count, from, to}
+  end
+
+  def perform_move({count, from, to}, stack) do
+    from_stack = Map.get(stack, from)
+    to_stack = Map.get(stack, to)
+
+    {from_stack, to_stack} =
+      Enum.reduce(1..count, {from_stack, to_stack}, fn _, {from_stack, to_stack} ->
+        {item, from_stack} = List.pop_at(from_stack, -1)
+        to_stack = to_stack ++ [item]
+
+        {from_stack, to_stack}
+      end)
+
+    stack
+    |> Map.put(from, from_stack)
+    |> Map.put(to, to_stack)
+  end
+
+  def parse_row(row) do
+    row
+    |> String.codepoints()
+    |> Enum.chunk_every(4)
+    |> Enum.map(&parse_crate/1)
+  end
+
+  def parse_crate(crate) do
+    case Enum.at(crate, 1) do
+      " " -> nil
+      value -> value
+    end
+  end
+
+  def build_stacks([keys | rows]) do
+    keys
+    |> Enum.with_index()
+    |> Enum.reduce(%{}, fn {key, index}, map ->
+      stack = build_stack(rows, index)
+
+      Map.put(map, key, stack)
+    end)
+  end
+
+  def build_stack(rows, index) do
+    rows
+    |> Enum.map(&Enum.at(&1, index))
+    |> Enum.reject(&is_nil/1)
+  end
+
   def solve(input) do
     IO.puts("--- Part One ---")
     IO.puts("Result: #{run(input)}")
   end
 
   def run(input) do
+    input
+    |> String.split("\n")
+    |> Enum.reduce({:stack, []}, fn line, acc -> parse_line(line, acc) end)
+    |> elem(1)
+    |> Enum.map(fn {_k, v} -> Enum.at(v, -1) end)
+    |> Enum.join()
   end
 end
 ```
@@ -42,8 +116,16 @@ defmodule PartOneTest do
   use ExUnit.Case, async: true
   import PartOne
 
-  @input ""
-  @expected nil
+  @input "    [D]    
+[N] [C]    
+[Z] [M] [P]
+ 1   2   3 
+
+move 1 from 2 to 1
+move 3 from 1 to 3
+move 2 from 2 to 1
+move 1 from 1 to 2"
+  @expected "CMZ"
 
   test "part one" do
     actual = run(@input)
@@ -68,12 +150,85 @@ PartOne.solve(puzzle_input)
 
 ```elixir
 defmodule PartTwo do
+  def parse_line(line, {:stack, stacks}) do
+    if String.trim(line) == "" do
+      {:moves, build_stacks(stacks)}
+    else
+      {:stack, [parse_row(line) | stacks]}
+    end
+  end
+
+  def parse_line(line, {:moves, stacks}) do
+    {:moves, line |> parse_move() |> perform_move(stacks)}
+  end
+
+  def parse_move(move) do
+    parts = String.split(move, " ")
+    count = Enum.at(parts, 1) |> String.trim() |> String.to_integer()
+    from = Enum.at(parts, 3) |> String.trim()
+    to = Enum.at(parts, 5) |> String.trim()
+
+    {count, from, to}
+  end
+
+  def perform_move({count, from, to}, stack) do
+    from_stack = Map.get(stack, from)
+    to_stack = Map.get(stack, to)
+
+    {from_stack, items} =
+      Enum.reduce(1..count, {from_stack, []}, fn _, {from_stack, items} ->
+        {item, from_stack} = List.pop_at(from_stack, -1)
+
+        {from_stack, items ++ [item]}
+      end)
+
+    stack
+    |> Map.put(from, from_stack)
+    |> Map.put(to, to_stack ++ Enum.reverse(items))
+  end
+
+  def parse_row(row) do
+    row
+    |> String.codepoints()
+    |> Enum.chunk_every(4)
+    |> Enum.map(&parse_crate/1)
+  end
+
+  def parse_crate(crate) do
+    case Enum.at(crate, 1) do
+      " " -> nil
+      value -> value
+    end
+  end
+
+  def build_stacks([keys | rows]) do
+    keys
+    |> Enum.with_index()
+    |> Enum.reduce(%{}, fn {key, index}, map ->
+      stack = build_stack(rows, index)
+
+      Map.put(map, key, stack)
+    end)
+  end
+
+  def build_stack(rows, index) do
+    rows
+    |> Enum.map(&Enum.at(&1, index))
+    |> Enum.reject(&is_nil/1)
+  end
+
   def solve(input) do
     IO.puts("--- Part Two ---")
     IO.puts("Result: #{run(input)}")
   end
 
   def run(input) do
+    input
+    |> String.split("\n")
+    |> Enum.reduce({:stack, []}, fn line, acc -> parse_line(line, acc) end)
+    |> elem(1)
+    |> Enum.map(fn {_k, v} -> Enum.at(v, -1) end)
+    |> Enum.join()
   end
 end
 ```
@@ -87,8 +242,16 @@ defmodule PartTwoTest do
   use ExUnit.Case, async: true
   import PartTwo
 
-  @input ""
-  @expected nil
+  @input "    [D]    
+[N] [C]    
+[Z] [M] [P]
+ 1   2   3 
+
+move 1 from 2 to 1
+move 3 from 1 to 3
+move 2 from 2 to 1
+move 1 from 1 to 2"
+  @expected "MCD"
 
   test "part two" do
     actual = run(@input)
@@ -105,4 +268,4 @@ ExUnit.run()
 PartTwo.solve(puzzle_input)
 ```
 
-<!-- livebook:{"offset":1483,"stamp":{"token":"XCP.YiNweQA41LRdjh3keJTAugSvHTv_LyDV27dquA4-t7jN5IdTLMahE455xl2AvXDEoKR_7rnAr-UxO5BUXa-UQgSaGI-Bv1pXIKa56aT72_HiJuSnlq8","version":2}} -->
+<!-- livebook:{"offset":5217,"stamp":{"token":"XCP.Du9ayzv0hN8IuPgTvOlB695DD_j4oTQpXi0Zu6N1kVe3jYsBd9oBw84soeEnZDB-h0Z_ecjz4Wc-qjfrpBmircWHdO-f_RNIFE0wCMCIG9kHpbsZPRM","version":2}} -->
