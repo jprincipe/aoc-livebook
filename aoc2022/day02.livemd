@@ -23,12 +23,44 @@ Mix.install([
 
 ```elixir
 defmodule PartOne do
+  def mapping(value) when value in ["A", "X"], do: :rock
+  def mapping(value) when value in ["B", "Y"], do: :paper
+  def mapping(value) when value in ["C", "Z"], do: :scissors
+
+  def shape_score(:rock), do: 1
+  def shape_score(:paper), do: 2
+  def shape_score(:scissors), do: 3
+
+  def outcome_score(:win), do: 6
+  def outcome_score(:tie), do: 3
+  def outcome_score(:lose), do: 0
+
+  def play(:rock, :rock), do: :tie
+  def play(:rock, :paper), do: :win
+  def play(:rock, :scissors), do: :lose
+
+  def play(:paper, :rock), do: :lose
+  def play(:paper, :paper), do: :tie
+  def play(:paper, :scissors), do: :win
+
+  def play(:scissors, :rock), do: :win
+  def play(:scissors, :paper), do: :lose
+  def play(:scissors, :scissors), do: :tie
+
   def solve(input) do
     IO.puts("--- Part One ---")
     IO.puts("Result: #{run(input)}")
   end
 
   def run(input) do
+    input
+    |> String.split("\n")
+    |> Enum.reduce(0, fn round, total ->
+      [opponent, self] = round |> String.trim() |> String.split(" ") |> Enum.map(&mapping/1)
+      outcome = play(opponent, self)
+
+      total + shape_score(self) + outcome_score(outcome)
+    end)
   end
 end
 ```
@@ -42,8 +74,10 @@ defmodule PartOneTest do
   use ExUnit.Case, async: true
   import PartOne
 
-  @input ""
-  @expected nil
+  @input "A Y
+  B X
+  C Z"
+  @expected 15
 
   test "part one" do
     actual = run(@input)
@@ -68,12 +102,51 @@ PartOne.solve(puzzle_input)
 
 ```elixir
 defmodule PartTwo do
+  def mapping(value) when value in ["A"], do: :rock
+  def mapping(value) when value in ["B"], do: :paper
+  def mapping(value) when value in ["C"], do: :scissors
+
+  def outcome_mapping(value) when value in ["X"], do: :lose
+  def outcome_mapping(value) when value in ["Y"], do: :tie
+  def outcome_mapping(value) when value in ["Z"], do: :win
+
+  def shape_score(:rock), do: 1
+  def shape_score(:paper), do: 2
+  def shape_score(:scissors), do: 3
+
+  def outcome_score(:win), do: 6
+  def outcome_score(:tie), do: 3
+  def outcome_score(:lose), do: 0
+
+  def play(:rock, :tie), do: :rock
+  def play(:rock, :win), do: :paper
+  def play(:rock, :lose), do: :scissors
+
+  def play(:paper, :lose), do: :rock
+  def play(:paper, :tie), do: :paper
+  def play(:paper, :win), do: :scissors
+
+  def play(:scissors, :win), do: :rock
+  def play(:scissors, :lose), do: :paper
+  def play(:scissors, :tie), do: :scissors
+
   def solve(input) do
     IO.puts("--- Part Two ---")
     IO.puts("Result: #{run(input)}")
   end
 
   def run(input) do
+    input
+    |> String.split("\n")
+    |> Enum.reduce(0, fn round, total ->
+      [opponent, outcome] = round |> String.trim() |> String.split(" ")
+      opponent = mapping(opponent)
+      outcome = outcome_mapping(outcome)
+
+      self = play(opponent, outcome)
+
+      total + shape_score(self) + outcome_score(outcome)
+    end)
   end
 end
 ```
@@ -87,8 +160,10 @@ defmodule PartTwoTest do
   use ExUnit.Case, async: true
   import PartTwo
 
-  @input ""
-  @expected nil
+  @input "A Y
+  B X
+  C Z"
+  @expected 12
 
   test "part two" do
     actual = run(@input)
@@ -105,4 +180,4 @@ ExUnit.run()
 PartTwo.solve(puzzle_input)
 ```
 
-<!-- livebook:{"offset":1483,"stamp":{"token":"XCP.EsAc6vef0yFTAwrv4gmpyNyxxERV66xiTJdKm_C2b3jExx3GozRtjIlBPNyeAyCDe07QGKVcx0IJKl8NFSr1q4PTbpQ97kj40L3rd2hfUD_LmFYjxU8","version":2}} -->
+<!-- livebook:{"offset":3741,"stamp":{"token":"XCP.ZPK4NBpVb7jy7Tn-3vefK8qGfLCHvjhzVeaUjqzQJBijRz8F5ngktnGaYizt9bOKcUZhEJVRPVLZZdIZC5xeOQ2GXoBVfUAwJ8YPwCfsMSBUpfygI_c","version":2}} -->
