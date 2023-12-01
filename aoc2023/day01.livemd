@@ -23,12 +23,33 @@ Mix.install([
 
 ```elixir
 defmodule PartOne do
+  defp process_line(line) do
+    chars = String.graphemes(line)
+    start_num = find_number(chars)
+    end_num = chars |> Enum.reverse() |> find_number()
+
+    String.to_integer("#{start_num}#{end_num}")
+  end
+
+  defp find_number(chars) do
+    Enum.find(chars, fn char ->
+      case Integer.parse(char) do
+        {value, _} -> value
+        :error -> nil
+      end
+    end)
+  end
+
   def solve(input) do
     IO.puts("--- Part One ---")
     IO.puts("Result: #{run(input)}")
   end
 
   def run(input) do
+    input
+    |> String.split("\n")
+    |> Enum.map(&process_line/1)
+    |> Enum.sum()
   end
 end
 ```
@@ -42,8 +63,11 @@ defmodule PartOneTest do
   use ExUnit.Case, async: true
   import PartOne
 
-  @input ""
-  @expected nil
+  @input "1abc2
+pqr3stu8vwx
+a1b2c3d4e5f
+treb7uchet"
+  @expected 142
 
   test "part one" do
     actual = run(@input)
@@ -68,12 +92,57 @@ PartOne.solve(puzzle_input)
 
 ```elixir
 defmodule PartTwo do
+  @num_words %{
+    "one" => 1,
+    "two" => 2,
+    "three" => 3,
+    "four" => 4,
+    "five" => 5,
+    "six" => 6,
+    "seven" => 7,
+    "eight" => 8,
+    "nine" => 9
+  }
+
+  defp process_line(line) do
+    chars = String.graphemes(line)
+    start_num = find_number(chars)
+    end_num = chars |> Enum.reverse() |> find_number()
+
+    String.to_integer("#{start_num}#{end_num}")
+  end
+
+  defp find_number(chars) do
+    chars
+    |> Enum.with_index()
+    |> Enum.find_value(fn {char, index} ->
+      case Integer.parse(char) do
+        {value, _} -> value
+        :error -> chars |> Enum.slice(0..index) |> Enum.join("") |> num_word()
+      end
+    end)
+  end
+
+  defp num_word(word) do
+    Enum.find_value(@num_words, fn {key, value} ->
+      cond do
+        String.ends_with?(word, key) -> value
+        word |> String.reverse() |> String.starts_with?(key) -> value
+        true -> nil
+      end
+    end)
+  end
+
   def solve(input) do
     IO.puts("--- Part Two ---")
     IO.puts("Result: #{run(input)}")
   end
 
   def run(input) do
+    input
+    |> String.split("\n")
+    |> Enum.map(&process_line/1)
+    |> Enum.sum()
   end
 end
 ```
@@ -87,8 +156,14 @@ defmodule PartTwoTest do
   use ExUnit.Case, async: true
   import PartTwo
 
-  @input ""
-  @expected nil
+  @input "two1nine
+eightwothree
+abcone2threexyz
+xtwone3four
+4nineeightseven2
+zoneight234
+7pqrstsixteen"
+  @expected 281
 
   test "part two" do
     actual = run(@input)
@@ -105,4 +180,4 @@ ExUnit.run()
 PartTwo.solve(puzzle_input)
 ```
 
-<!-- livebook:{"offset":1483,"stamp":{"token":"XCP.piiV3_Qj1knnnrh78VrDVl6SHDx3-APfMYCaXIcuE7g-fu_unQvvQYVNZ9RJ1WvVXrwBlEyt92pnWoO2Ke2bGGmLWlfKApTKC418TnVV62CKETlAHRg","version":2}} -->
+<!-- livebook:{"offset":3079,"stamp":{"token":"XCP.RitE6BwrGTkWnJWlP_6Qa678e2CDvsgYpCJxj27l8fKqtDHPTp_rlbF-T6BOtSKrmConKC_PY2p2s4NLcKWoHFoaca0MJ3Ofl_6vmaw-sjCvc1fNwDo","version":2}} -->
