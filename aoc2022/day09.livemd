@@ -23,12 +23,103 @@ Mix.install([
 
 ```elixir
 defmodule PartOne do
+  defp print_grid(head, tail) do
+    Enum.each(5..0, fn y ->
+      Enum.each(0..5, fn x ->
+        cond do
+          head == {x, y} -> IO.write("H")
+          tail == {x, y} -> IO.write("T")
+          true -> IO.write(".")
+        end
+      end)
+
+      IO.write("\n")
+    end)
+
+    IO.write("\n")
+  end
+
+  defp perform_motion(direction, {tail_locations, head, tail}) do
+    head = move_head(direction, head)
+    tail = move_tail(direction, head, tail)
+
+    print_grid(head, tail)
+
+    {
+      MapSet.put(tail_locations, tail),
+      head,
+      tail
+    }
+  end
+
+  defp move_head("R", {head_x, head_y}), do: {head_x + 1, head_y}
+  defp move_head("L", {head_x, head_y}), do: {head_x - 1, head_y}
+  defp move_head("U", {head_x, head_y}), do: {head_x, head_y + 1}
+  defp move_head("D", {head_x, head_y}), do: {head_x, head_y - 1}
+
+  defp move_tail("R", {head_x, head_y} = head, {tail_x, tail_y} = tail) do
+    cond do
+      not needs_move?(head, tail) -> tail
+      head_y == tail_y -> {head_x - 1, tail_y}
+      head_y != tail_y -> {tail_x + 1, head_y}
+    end
+  end
+
+  defp move_tail("L", {head_x, head_y} = head, {tail_x, tail_y} = tail) do
+    cond do
+      not needs_move?(head, tail) -> tail
+      head_y == tail_y -> {head_x + 1, tail_y}
+      head_y != tail_y -> {tail_x - 1, head_y}
+    end
+  end
+
+  defp move_tail("U", {head_x, head_y} = head, {tail_x, tail_y} = tail) do
+    cond do
+      not needs_move?(head, tail) -> tail
+      head_x == tail_x -> {tail_x, tail_y + 1}
+      head_x != tail_x -> {head_x, head_y - 1}
+    end
+  end
+
+  defp move_tail("D", {head_x, head_y} = head, {tail_x, tail_y} = tail) do
+    cond do
+      not needs_move?(head, tail) -> tail
+      head_x == tail_x -> {tail_x, tail_y - 1}
+      head_x != tail_x -> {head_x, head_y + 1}
+    end
+  end
+
+  defp needs_move?({head_x, head_y}, {tail_x, tail_y}),
+    do: abs(head_y - tail_y) > 1 || abs(head_x - tail_x) > 1
+
   def solve(input) do
     IO.puts("--- Part One ---")
     IO.puts("Result: #{run(input)}")
   end
 
   def run(input) do
+    state = {
+      # tail locations
+      MapSet.new([]),
+      # current head
+      {0, 0},
+      # current tail
+      {0, 0}
+    }
+
+    input
+    |> String.split("\n")
+    |> Enum.reduce(state, fn motion, state ->
+      IO.puts("== #{motion} ==")
+
+      [direction, count] = String.split(motion, " ")
+
+      Enum.reduce(1..String.to_integer(count), state, fn _, state ->
+        perform_motion(direction, state)
+      end)
+    end)
+    |> elem(0)
+    |> MapSet.size()
   end
 end
 ```
@@ -42,8 +133,15 @@ defmodule PartOneTest do
   use ExUnit.Case, async: true
   import PartOne
 
-  @input ""
-  @expected nil
+  @input "R 4
+U 4
+L 3
+D 1
+R 4
+D 1
+L 5
+R 2"
+  @expected 13
 
   test "part one" do
     actual = run(@input)
@@ -68,12 +166,105 @@ PartOne.solve(puzzle_input)
 
 ```elixir
 defmodule PartTwo do
+  defp print_grid(knots) do
+    # IO.inspect(knots, label: "knots")
+    Enum.each(20..0, fn y ->
+      Enum.each(0..25, fn x ->
+        cond do
+          Enum.at(knots, 0) == {x, y} -> IO.write("H")
+          Enum.at(knots, 1) == {x, y} -> IO.write("1")
+          Enum.at(knots, 2) == {x, y} -> IO.write("2")
+          Enum.at(knots, 3) == {x, y} -> IO.write("3")
+          Enum.at(knots, 4) == {x, y} -> IO.write("4")
+          Enum.at(knots, 5) == {x, y} -> IO.write("5")
+          Enum.at(knots, 6) == {x, y} -> IO.write("6")
+          Enum.at(knots, 7) == {x, y} -> IO.write("7")
+          Enum.at(knots, 8) == {x, y} -> IO.write("8")
+          Enum.at(knots, 9) == {x, y} -> IO.write("9")
+          true -> IO.write(".")
+        end
+      end)
+
+      IO.write("\n")
+    end)
+
+    IO.write("\n")
+
+    knots
+  end
+
+  defp perform_motion(direction, {tail_locations, [head | body]}) do
+    knots =
+      body
+      |> Enum.reduce([move_head(direction, head)], fn knot, knots ->
+        moved_knot = move_knot(direction, Enum.at(knots, -1), knot)
+
+        IO.puts(
+          "knot #{Enum.count(knots)}: h -> #{inspect(Enum.at(knots, -1))}, t -> #{inspect(knot)} => #{inspect(moved_knot)}"
+        )
+
+        knots ++ [moved_knot]
+      end)
+      |> print_grid()
+
+    tail = Enum.at(knots, -1)
+
+    {
+      MapSet.put(tail_locations, tail),
+      knots
+    }
+  end
+
+  defp move_head("R", {head_x, head_y}), do: {head_x + 1, head_y}
+  defp move_head("L", {head_x, head_y}), do: {head_x - 1, head_y}
+  defp move_head("U", {head_x, head_y}), do: {head_x, head_y + 1}
+  defp move_head("D", {head_x, head_y}), do: {head_x, head_y - 1}
+
+  defp move_knot(direction, {head_x, head_y}, {tail_x, tail_y} = tail) do
+    if abs(head_y - tail_y) > 1 || abs(head_x - tail_x) > 1 do
+      cond do
+        head_y - tail_y
+      end
+
+      # case direction do
+      #   "R" -> {head_x - 1, head_y}
+      #   "L" -> {head_x + 1, head_y}
+      #   "D" -> {head_x, head_y + 1}
+
+      #   "U" && head_y - tail_y == 2 -> {tail_x + 1, tail_y + 1}
+      #   "U" -> {head_x, head_y - 1}
+      # end
+    else
+      tail
+    end
+  end
+
   def solve(input) do
     IO.puts("--- Part Two ---")
     IO.puts("Result: #{run(input)}")
   end
 
   def run(input) do
+    state = {
+      # tail locations
+      MapSet.new([]),
+      # 10 knots
+      Enum.map(0..9, fn _ -> {13, 5} end)
+    }
+
+    input
+    |> String.split("\n")
+    |> Enum.reduce(state, fn motion, state ->
+      IO.puts("== #{motion} ==")
+
+      [direction, count] = String.split(motion, " ")
+
+      Enum.reduce(1..String.to_integer(count), state, fn _, state ->
+        perform_motion(direction, state)
+      end)
+    end)
+    |> elem(0)
+    |> MapSet.size()
   end
 end
 ```
@@ -87,8 +278,17 @@ defmodule PartTwoTest do
   use ExUnit.Case, async: true
   import PartTwo
 
-  @input ""
-  @expected nil
+  #   @input "R 5
+  # U 8
+  # L 8
+  # D 3
+  # R 17
+  # D 10
+  # L 25
+  # U 20"
+  @input "R 5
+U 8"
+  @expected 36
 
   test "part two" do
     actual = run(@input)
@@ -105,4 +305,4 @@ ExUnit.run()
 PartTwo.solve(puzzle_input)
 ```
 
-<!-- livebook:{"offset":1483,"stamp":{"token":"XCP.YiNweQA41LRdjh3keJTAugSvHTv_LyDV27dquA4-t7jN5IdTLMahE455xl2AvXDEoKR_7rnAr-UxO5BUXa-UQgSaGI-Bv1pXIKa56aT72_HiJuSnlq8","version":2}} -->
+<!-- livebook:{"offset":6537,"stamp":{"token":"XCP.Ad9tgIAtxrq8-SEIU0rJwHjKM0OO_CcgXJnwzo2N1BdeyDTpsrtEoMwFKhLmebKHT9dKLqTBN-Qo8BEVWsoW4IKytrLT3IO_i0Vc7LZ7e9gDK20rYlE","version":2}} -->
