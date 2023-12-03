@@ -23,12 +23,96 @@ Mix.install([
 
 ```elixir
 defmodule PartOne do
+  def extract_grid(input) do
+    input
+    |> String.split("\n")
+    |> Enum.map(&extract_line/1)
+  end
+
+  def extract_line(line) do
+    line
+    |> String.graphemes()
+    |> Enum.map(fn char ->
+      with :error <- Integer.parse(char) do
+        case char do
+          "." -> nil
+          _ -> {:symbol, char}
+        end
+      else
+        _ -> {:number, char}
+      end
+    end)
+  end
+
+  def find_numbers(grid) do
+    grid
+    |> Enum.with_index()
+    |> Enum.reduce([], fn {line, y}, numbers ->
+      {numbers, current} =
+        line
+        |> Enum.with_index()
+        |> Enum.reduce({numbers, []}, fn {value, x}, {numbers, current} ->
+          with {:number, _} <- value do
+            {numbers, current ++ [{x, y}]}
+          else
+            _ ->
+              if current == [], do: {numbers, current}, else: {numbers ++ [current], []}
+          end
+        end)
+
+      if current == [], do: numbers, else: numbers ++ [current]
+    end)
+  end
+
+  def valid_numbers(grid, numbers) do
+    Enum.reduce(numbers, [], fn positions, valid_numbers ->
+      if adjacent_symbol?(grid, positions) do
+        valid_numbers ++ [build_number(grid, positions)]
+      else
+        valid_numbers
+      end
+    end)
+  end
+
+  def adjacent_symbol?(grid, {x, y}) do
+    [
+      {x - 1, y},
+      {x - 1, y - 1},
+      {x - 1, y + 1},
+      {x, y - 1},
+      {x, y + 1},
+      {x + 1, y},
+      {x + 1, y - 1},
+      {x + 1, y + 1}
+    ]
+    |> Enum.find_value(fn {x, y} ->
+      case grid |> Enum.at(y) |> Kernel.||([]) |> Enum.at(x) do
+        {:symbol, _} -> true
+        _ -> false
+      end
+    end)
+  end
+
+  def adjacent_symbol?(grid, positions) when is_list(positions) do
+    Enum.find(positions, fn position -> adjacent_symbol?(grid, position) end)
+  end
+
+  def build_number(grid, positions) do
+    positions
+    |> Enum.map(fn {x, y} -> grid |> Enum.at(y) |> Enum.at(x) |> elem(1) end)
+    |> Enum.join("")
+    |> String.to_integer()
+  end
+
   def solve(input) do
     IO.puts("--- Part One ---")
     IO.puts("Result: #{run(input)}")
   end
 
   def run(input) do
+    grid = extract_grid(input)
+    numbers = find_numbers(grid)
+    valid_numbers(grid, numbers) |> Enum.sum()
   end
 end
 ```
@@ -42,8 +126,17 @@ defmodule PartOneTest do
   use ExUnit.Case, async: true
   import PartOne
 
-  @input ""
-  @expected nil
+  @input "467..114..
+...*......
+..35..633.
+......#...
+617*......
+.....+.58.
+..592.....
+......755.
+...$.*....
+.664.598.."
+  @expected 4361
 
   test "part one" do
     actual = run(@input)
@@ -68,12 +161,105 @@ PartOne.solve(puzzle_input)
 
 ```elixir
 defmodule PartTwo do
+  def extract_grid(input) do
+    input
+    |> String.split("\n")
+    |> Enum.map(&extract_line/1)
+  end
+
+  def extract_line(line) do
+    line
+    |> String.graphemes()
+    |> Enum.map(fn char ->
+      with :error <- Integer.parse(char) do
+        case char do
+          "*" -> :gear
+          _ -> nil
+        end
+      else
+        _ -> {:number, char}
+      end
+    end)
+  end
+
+  def find_numbers(grid) do
+    grid
+    |> Enum.with_index()
+    |> Enum.reduce([], fn {line, y}, numbers ->
+      {numbers, current} =
+        line
+        |> Enum.with_index()
+        |> Enum.reduce({numbers, []}, fn {value, x}, {numbers, current} ->
+          with {:number, _} <- value do
+            {numbers, current ++ [{x, y}]}
+          else
+            _ ->
+              if current == [],
+                do: {numbers, current},
+                else: {numbers ++ [MapSet.new(current)], []}
+          end
+        end)
+
+      if current == [], do: numbers, else: numbers ++ [MapSet.new(current)]
+    end)
+  end
+
+  def find_gears(grid, numbers) do
+    grid
+    |> Enum.with_index()
+    |> Enum.reduce([], fn {line, y}, gears ->
+      line
+      |> Enum.with_index()
+      |> Enum.reduce(gears, fn {value, x}, gears ->
+        if value == :gear do
+          case adjacent_numbers(numbers, {x, y}) do
+            [v1, v2] -> gears ++ [build_number(grid, v1) * build_number(grid, v2)]
+            _ -> gears
+          end
+        else
+          gears
+        end
+      end)
+    end)
+  end
+
+  def adjacent_numbers(numbers, {x, y}) do
+    [
+      {x - 1, y},
+      {x - 1, y - 1},
+      {x - 1, y + 1},
+      {x, y - 1},
+      {x, y + 1},
+      {x + 1, y},
+      {x + 1, y - 1},
+      {x + 1, y + 1}
+    ]
+    |> Enum.flat_map(fn position ->
+      case Enum.find(numbers, &MapSet.member?(&1, position)) do
+        nil -> []
+        number -> [number]
+      end
+    end)
+    |> Enum.uniq()
+  end
+
+  def build_number(grid, positions) do
+    positions
+    |> MapSet.to_list()
+    |> Enum.map(fn {x, y} -> grid |> Enum.at(y) |> Enum.at(x) |> elem(1) end)
+    |> Enum.join("")
+    |> String.to_integer()
+  end
+
   def solve(input) do
     IO.puts("--- Part Two ---")
     IO.puts("Result: #{run(input)}")
   end
 
   def run(input) do
+    grid = extract_grid(input)
+    numbers = find_numbers(grid)
+    find_gears(grid, numbers) |> Enum.sum()
   end
 end
 ```
@@ -87,8 +273,17 @@ defmodule PartTwoTest do
   use ExUnit.Case, async: true
   import PartTwo
 
-  @input ""
-  @expected nil
+  @input "467..114..
+...*......
+..35..633.
+......#...
+617*......
+.....+.58.
+..592.....
+......755.
+...$.*....
+.664.598.."
+  @expected 467_835
 
   test "part two" do
     actual = run(@input)
@@ -105,4 +300,4 @@ ExUnit.run()
 PartTwo.solve(puzzle_input)
 ```
 
-<!-- livebook:{"offset":1483,"stamp":{"token":"XCP.YiNweQA41LRdjh3keJTAugSvHTv_LyDV27dquA4-t7jN5IdTLMahE455xl2AvXDEoKR_7rnAr-UxO5BUXa-UQgSaGI-Bv1pXIKa56aT72_HiJuSnlq8","version":2}} -->
+<!-- livebook:{"offset":5954,"stamp":{"token":"XCP.SwrcsPCSFzkgeFo-1FXtwknumGl_CDDV1NudBlgfw5unKW3XtoS08nIZ3lzEsLR7DnoP-LUWelwcYbSit3iZxTlS5VDe7EQJ6r-NiZMyt9H8z93tcNk","version":2}} -->
