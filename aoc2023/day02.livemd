@@ -23,12 +23,51 @@ Mix.install([
 
 ```elixir
 defmodule PartOne do
+  defp valid_game?(game, counts) do
+    game
+    |> String.split("; ")
+    |> Enum.map(fn subset ->
+      subset
+      |> String.split(", ")
+      |> Enum.map(fn block ->
+        [number, color] = String.split(block, " ")
+
+        {color, String.to_integer(number)}
+      end)
+    end)
+    |> Enum.map(&validate_blocks(&1, counts))
+    |> Enum.all?()
+  end
+
+  defp validate_blocks(blocks, {red_count, green_count, blue_count}) do
+    blocks
+    |> Enum.map(fn {color, count} ->
+      case color do
+        "red" -> count <= red_count
+        "green" -> count <= green_count
+        "blue" -> count <= blue_count
+      end
+    end)
+    |> Enum.all?()
+  end
+
   def solve(input) do
     IO.puts("--- Part One ---")
     IO.puts("Result: #{run(input)}")
   end
 
   def run(input) do
+    input
+    |> String.split("\n")
+    |> Enum.reduce(0, fn "Game " <> game, total ->
+      [id, detail] = String.split(game, ": ")
+
+      if valid_game?(detail, {12, 13, 14}) do
+        total + String.to_integer(id)
+      else
+        total
+      end
+    end)
   end
 end
 ```
@@ -42,8 +81,12 @@ defmodule PartOneTest do
   use ExUnit.Case, async: true
   import PartOne
 
-  @input ""
-  @expected nil
+  @input "Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green
+Game 2: 1 blue, 2 green; 3 green, 4 blue, 1 red; 1 green, 1 blue
+Game 3: 8 green, 6 blue, 20 red; 5 blue, 4 red, 13 green; 5 green, 1 red
+Game 4: 1 green, 3 red, 6 blue; 3 green, 6 red; 3 green, 15 blue, 14 red
+Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green"
+  @expected 8
 
   test "part one" do
     actual = run(@input)
@@ -68,12 +111,43 @@ PartOne.solve(puzzle_input)
 
 ```elixir
 defmodule PartTwo do
+  defp game_power(game) do
+    game
+    |> String.split("; ")
+    |> Enum.reduce({0, 0, 0}, fn subset, {red_count, green_count, blue_count} ->
+      subset
+      |> String.split(", ")
+      |> Enum.reduce({red_count, green_count, blue_count}, fn block,
+                                                              {red_count, green_count, blue_count} ->
+        [count, color] = String.split(block, " ")
+
+        case color do
+          "red" -> {max(red_count, String.to_integer(count)), green_count, blue_count}
+          "green" -> {red_count, max(green_count, String.to_integer(count)), blue_count}
+          "blue" -> {red_count, green_count, max(blue_count, String.to_integer(count))}
+        end
+      end)
+    end)
+  end
+
   def solve(input) do
     IO.puts("--- Part Two ---")
     IO.puts("Result: #{run(input)}")
   end
 
   def run(input) do
+    input
+    |> String.split("\n")
+    |> Enum.reduce(0, fn "Game " <> game, total ->
+      [_id, detail] = String.split(game, ": ")
+
+      detail
+      |> game_power()
+      |> Tuple.to_list()
+      |> IO.inspect(label: "powers")
+      |> Enum.reduce(1, &(&1 * &2))
+      |> Kernel.+(total)
+    end)
   end
 end
 ```
@@ -87,8 +161,12 @@ defmodule PartTwoTest do
   use ExUnit.Case, async: true
   import PartTwo
 
-  @input ""
-  @expected nil
+  @input "Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green
+Game 2: 1 blue, 2 green; 3 green, 4 blue, 1 red; 1 green, 1 blue
+Game 3: 8 green, 6 blue, 20 red; 5 blue, 4 red, 13 green; 5 green, 1 red
+Game 4: 1 green, 3 red, 6 blue; 3 green, 6 red; 3 green, 15 blue, 14 red
+Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green"
+  @expected 2286
 
   test "part two" do
     actual = run(@input)
@@ -105,4 +183,4 @@ ExUnit.run()
 PartTwo.solve(puzzle_input)
 ```
 
-<!-- livebook:{"offset":1483,"stamp":{"token":"XCP.EsAc6vef0yFTAwrv4gmpyNyxxERV66xiTJdKm_C2b3jExx3GozRtjIlBPNyeAyCDe07QGKVcx0IJKl8NFSr1q4PTbpQ97kj40L3rd2hfUD_LmFYjxU8","version":2}} -->
+<!-- livebook:{"offset":4074,"stamp":{"token":"XCP.6rvx16_525xPIhRuQ-4AgkZtiksn8A1QphNc7BzPDL31quj8iZgr7iDLI8NtNajm2ymu4Mg3W7CarjsbYgfu1dlkxHi_rXRODmjQeE_OPp_6lugg_4w","version":2}} -->
