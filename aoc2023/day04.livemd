@@ -23,12 +23,45 @@ Mix.install([
 
 ```elixir
 defmodule PartOne do
+  def check_card(card) do
+    [_id, numbers] = String.split(card, ": ")
+    [winning_numbers, existing_numbers] = String.split(numbers, " | ")
+
+    winning_numbers =
+      winning_numbers |> String.split(" ") |> Enum.reject(&(&1 == "")) |> MapSet.new()
+
+    existing_numbers =
+      existing_numbers |> String.split(" ") |> Enum.reject(&(&1 == "")) |> MapSet.new()
+
+    winning_numbers
+    |> MapSet.intersection(existing_numbers)
+    |> MapSet.to_list()
+    |> score()
+  end
+
+  def score([]), do: 0
+  def score([_]), do: 1
+  def score([_ | rest]), do: Enum.reduce(rest, 1, fn _, score -> score * 2 end)
+
+  def play(cards, index) do
+    count = Enum.at(cards, index)
+    copies = Enum.slice(cards, (index + 1)..(index + 1 + count))
+
+    Enum.reduce(copies, 1, fn copy, total ->
+      total + elem(copy, 1)
+    end)
+  end
+
   def solve(input) do
     IO.puts("--- Part One ---")
     IO.puts("Result: #{run(input)}")
   end
 
   def run(input) do
+    input
+    |> String.split("\n")
+    |> Enum.map(&check_card/1)
+    |> Enum.sum()
   end
 end
 ```
@@ -42,8 +75,13 @@ defmodule PartOneTest do
   use ExUnit.Case, async: true
   import PartOne
 
-  @input ""
-  @expected nil
+  @input "Card 1: 41 48 83 86 17 | 83 86  6 31 17  9 48 53
+Card 2: 13 32 20 16 61 | 61 30 68 82 17 32 24 19
+Card 3:  1 21 53 59 44 | 69 82 63 72 16 21 14  1
+Card 4: 41 92 73 84 69 | 59 84 76 51 58  5 54 83
+Card 5: 87 83 26 28 32 | 88 30 70 12 93 22 82 36
+Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11"
+  @expected 13
 
   test "part one" do
     actual = run(@input)
@@ -68,12 +106,66 @@ PartOne.solve(puzzle_input)
 
 ```elixir
 defmodule PartTwo do
+  def check_card(card) do
+    [id, numbers] = String.split(card, ": ")
+    [winning_numbers, existing_numbers] = String.split(numbers, " | ")
+
+    winning_numbers =
+      winning_numbers |> String.split(" ") |> Enum.reject(&(&1 == "")) |> MapSet.new()
+
+    existing_numbers =
+      existing_numbers |> String.split(" ") |> Enum.reject(&(&1 == "")) |> MapSet.new()
+
+    matches =
+      winning_numbers
+      |> MapSet.intersection(existing_numbers)
+      |> MapSet.to_list()
+      |> Enum.count()
+
+    %{id: id, matches: matches, instances: 1}
+  end
+
+  def count_copies(cards) do
+    cards
+    |> Enum.with_index()
+    |> Enum.reduce(cards, fn {_card, index}, cards ->
+      copies(cards, index)
+    end)
+    |> Enum.reduce(0, fn card, total ->
+      total + card.instances
+    end)
+  end
+
+  def copies(cards, index) do
+    case Enum.at(cards, index) do
+      %{matches: 0} ->
+        cards
+
+      %{matches: matches, instances: instances} ->
+        (index + 1)..(index + min(matches, Enum.count(cards)))
+        |> Enum.to_list()
+        |> Enum.reduce(cards, fn copy_index, cards ->
+          copy = Enum.at(cards, copy_index)
+
+          List.replace_at(
+            cards,
+            copy_index,
+            Map.put(copy, :instances, copy.instances + instances)
+          )
+        end)
+    end
+  end
+
   def solve(input) do
     IO.puts("--- Part Two ---")
     IO.puts("Result: #{run(input)}")
   end
 
   def run(input) do
+    input
+    |> String.split("\n")
+    |> Enum.map(&check_card/1)
+    |> count_copies()
   end
 end
 ```
@@ -87,8 +179,13 @@ defmodule PartTwoTest do
   use ExUnit.Case, async: true
   import PartTwo
 
-  @input ""
-  @expected nil
+  @input "Card 1: 41 48 83 86 17 | 83 86  6 31 17  9 48 53
+Card 2: 13 32 20 16 61 | 61 30 68 82 17 32 24 19
+Card 3:  1 21 53 59 44 | 69 82 63 72 16 21 14  1
+Card 4: 41 92 73 84 69 | 59 84 76 51 58  5 54 83
+Card 5: 87 83 26 28 32 | 88 30 70 12 93 22 82 36
+Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11"
+  @expected 30
 
   test "part two" do
     actual = run(@input)
@@ -105,4 +202,4 @@ ExUnit.run()
 PartTwo.solve(puzzle_input)
 ```
 
-<!-- livebook:{"offset":1483,"stamp":{"token":"XCP.YiNweQA41LRdjh3keJTAugSvHTv_LyDV27dquA4-t7jN5IdTLMahE455xl2AvXDEoKR_7rnAr-UxO5BUXa-UQgSaGI-Bv1pXIKa56aT72_HiJuSnlq8","version":2}} -->
+<!-- livebook:{"offset":4369,"stamp":{"token":"XCP.Lkg_NBANZbVP4HAjwlk7cIfmSXwFNueaU45wfIvClEcwR_mESVBY38TWn3mHaUYpDlNQS9KvA-uBaEaf8sDD88WPfIKXSBXKsJh-owQnAboPoN2P438","version":2}} -->
