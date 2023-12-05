@@ -23,12 +23,80 @@ Mix.install([
 
 ```elixir
 defmodule PartOne do
+  def build_map(data) do
+    Enum.reduce(data, {%{}, nil}, fn row, {maps, key} ->
+      cond do
+        String.length(row) == 0 ->
+          {maps, nil}
+
+        is_nil(key) ->
+          key = row |> String.split(" map:") |> Enum.at(0)
+
+          {Map.put(maps, key, []), key}
+
+        true ->
+          ranges = Map.get(maps, key)
+          {Map.put(maps, key, ranges ++ [parse_ranges(row)]), key}
+      end
+    end)
+    |> elem(0)
+  end
+
+  def parse_ranges(row) do
+    [
+      destination_range_start,
+      source_range_start,
+      range_length
+    ] = row |> String.split(" ") |> Enum.map(&String.to_integer/1)
+
+    %{
+      dest_start: destination_range_start,
+      src_start: source_range_start,
+      length: range_length
+    }
+  end
+
+  def find_location(maps, seed_pos) do
+    [
+      "seed-to-soil",
+      "soil-to-fertilizer",
+      "fertilizer-to-water",
+      "water-to-light",
+      "light-to-temperature",
+      "temperature-to-humidity",
+      "humidity-to-location"
+    ]
+    |> Enum.reduce(seed_pos, fn key, pos ->
+      maps
+      |> Map.get(key)
+      |> Enum.find(fn %{src_start: src_start, length: length} ->
+        source_start = src_start
+        source_end = src_start + length - 1
+
+        pos >= source_start && pos <= source_end
+      end)
+      |> destination_position(pos)
+    end)
+  end
+
+  def destination_position(nil, pos), do: pos
+
+  def destination_position(%{dest_start: dest_start, src_start: src_start}, pos) do
+    pos - src_start + dest_start
+  end
+
   def solve(input) do
     IO.puts("--- Part One ---")
     IO.puts("Result: #{run(input)}")
   end
 
   def run(input) do
+    ["seeds: " <> seeds | data] = String.split(input, "\n")
+    seeds = seeds |> String.split(" ") |> Enum.map(&String.to_integer/1)
+    maps = build_map(data)
+    locations = Enum.map(seeds, &find_location(maps, &1))
+
+    Enum.min(locations)
   end
 end
 ```
@@ -42,8 +110,40 @@ defmodule PartOneTest do
   use ExUnit.Case, async: true
   import PartOne
 
-  @input ""
-  @expected nil
+  @input "seeds: 79 14 55 13
+
+seed-to-soil map:
+50 98 2
+52 50 48
+
+soil-to-fertilizer map:
+0 15 37
+37 52 2
+39 0 15
+
+fertilizer-to-water map:
+49 53 8
+0 11 42
+42 0 7
+57 7 4
+
+water-to-light map:
+88 18 7
+18 25 70
+
+light-to-temperature map:
+45 77 23
+81 45 19
+68 64 13
+
+temperature-to-humidity map:
+0 69 1
+1 0 69
+
+humidity-to-location map:
+60 56 37
+56 93 4"
+  @expected 35
 
   test "part one" do
     actual = run(@input)
@@ -68,12 +168,114 @@ PartOne.solve(puzzle_input)
 
 ```elixir
 defmodule PartTwo do
+  def build_map(data) do
+    Enum.reduce(data, {%{}, nil}, fn row, {maps, key} ->
+      cond do
+        String.length(row) == 0 ->
+          {maps, nil}
+
+        is_nil(key) ->
+          key = row |> String.split(" map:") |> Enum.at(0)
+
+          {Map.put(maps, key, []), key}
+
+        true ->
+          ranges = (Map.get(maps, key) ++ [parse_ranges(row)]) |> Enum.sort_by(& &1.dest_start)
+
+          {Map.put(maps, key, ranges), key}
+      end
+    end)
+    |> elem(0)
+  end
+
+  def parse_ranges(row) do
+    [
+      destination_range_start,
+      source_range_start,
+      range_length
+    ] = row |> String.split(" ") |> Enum.map(&String.to_integer/1)
+
+    %{
+      dest_start: destination_range_start,
+      src_start: source_range_start,
+      length: range_length
+    }
+  end
+
+  def find_seed_pos(maps, location_pos) do
+    [
+      "seed-to-soil",
+      "soil-to-fertilizer",
+      "fertilizer-to-water",
+      "water-to-light",
+      "light-to-temperature",
+      "temperature-to-humidity",
+      "humidity-to-location"
+    ]
+    |> Enum.reverse()
+    |> Enum.reduce(location_pos, fn key, pos ->
+      maps
+      |> Map.get(key)
+      |> Enum.find(fn %{dest_start: dest_start, length: length} ->
+        dest_end = dest_start + length - 1
+
+        pos >= dest_start && pos <= dest_end
+      end)
+      |> source_position(pos)
+    end)
+  end
+
+  def source_position(nil, pos), do: pos
+
+  def source_position(%{dest_start: dest_start, src_start: src_start}, pos),
+    do: pos - dest_start + src_start
+
+  def seed_exists?(seeds, seed_pos) do
+    Enum.find_value(seeds, fn [start, count] ->
+      seed_pos >= start && seed_pos <= start + count - 1
+    end)
+  end
+
   def solve(input) do
     IO.puts("--- Part Two ---")
-    IO.puts("Result: #{run(input)}")
+
+    {time_in_microseconds, result} = :timer.tc(fn -> run(input) end)
+
+    IO.puts("Result: #{result} in #{time_in_microseconds / 1000}ms")
   end
 
   def run(input) do
+    ["seeds: " <> seeds | data] = String.split(input, "\n")
+    seeds = seeds |> String.split(" ") |> Enum.map(&String.to_integer/1) |> Enum.chunk_every(2)
+    maps = build_map(data)
+    humidity_to_location = Map.get(maps, "humidity-to-location")
+    first_htl = Enum.at(humidity_to_location, 0)
+
+    humidity_to_location = [
+      %{dest_start: 0, src_start: 0, length: first_htl.dest_start} | humidity_to_location
+    ]
+
+    Enum.reduce_while(humidity_to_location, nil, fn %{dest_start: dest_start, length: length},
+                                                    seed_pos ->
+      seed_pos =
+        dest_start..(dest_start + length - 1)
+        |> Enum.to_list()
+        |> Enum.reduce_while(seed_pos, fn location_pos, _ ->
+          seed_pos = find_seed_pos(maps, location_pos)
+
+          if seed_exists?(seeds, seed_pos) do
+            {:halt, location_pos}
+          else
+            {:cont, nil}
+          end
+        end)
+
+      if seed_pos do
+        {:halt, seed_pos}
+      else
+        {:cont, nil}
+      end
+    end)
   end
 end
 ```
@@ -87,8 +289,40 @@ defmodule PartTwoTest do
   use ExUnit.Case, async: true
   import PartTwo
 
-  @input ""
-  @expected nil
+  @input "seeds: 79 14 55 13
+
+seed-to-soil map:
+50 98 2
+52 50 48
+
+soil-to-fertilizer map:
+0 15 37
+37 52 2
+39 0 15
+
+fertilizer-to-water map:
+49 53 8
+0 11 42
+42 0 7
+57 7 4
+
+water-to-light map:
+88 18 7
+18 25 70
+
+light-to-temperature map:
+45 77 23
+81 45 19
+68 64 13
+
+temperature-to-humidity map:
+0 69 1
+1 0 69
+
+humidity-to-location map:
+60 56 37
+56 93 4"
+  @expected 46
 
   test "part two" do
     actual = run(@input)
@@ -105,4 +339,4 @@ ExUnit.run()
 PartTwo.solve(puzzle_input)
 ```
 
-<!-- livebook:{"offset":1483,"stamp":{"token":"XCP.YiNweQA41LRdjh3keJTAugSvHTv_LyDV27dquA4-t7jN5IdTLMahE455xl2AvXDEoKR_7rnAr-UxO5BUXa-UQgSaGI-Bv1pXIKa56aT72_HiJuSnlq8","version":2}} -->
+<!-- livebook:{"offset":6695,"stamp":{"token":"XCP.2aFrbkSOrBvwMsU9tAjdyLYny-9CLWw3i9_w_y-rruLHBC0mQEDDMeiqTlFurZGvPzYD1M1csAW54Zuz7_UxqNteSPOwZdWDqXinTkUa6tQiRQB7d7E","version":2}} -->
