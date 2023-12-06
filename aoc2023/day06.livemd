@@ -23,12 +23,55 @@ Mix.install([
 
 ```elixir
 defmodule PartOne do
+  def parse_rounds(input) do
+    [
+      "Time:" <> times,
+      "Distance:" <> distances
+    ] = String.split(input, "\n")
+
+    times =
+      times
+      |> String.trim()
+      |> String.split(" ")
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.map(&String.to_integer/1)
+
+    distances =
+      distances
+      |> String.trim()
+      |> String.split(" ")
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.map(&String.to_integer/1)
+
+    times
+    |> Enum.with_index()
+    |> Enum.map(fn {time, index} ->
+      {time, Enum.at(distances, index)}
+    end)
+  end
+
+  def test_round({time, distance}) do
+    0..time
+    |> Enum.to_list()
+    |> Enum.filter(fn hold_ms ->
+      speed_mmps = hold_ms
+      remaining_ms = time - hold_ms
+
+      speed_mmps * remaining_ms > distance
+    end)
+    |> Enum.count()
+  end
+
   def solve(input) do
     IO.puts("--- Part One ---")
     IO.puts("Result: #{run(input)}")
   end
 
   def run(input) do
+    input
+    |> parse_rounds()
+    |> Enum.map(&test_round/1)
+    |> Enum.reduce(1, &(&1 * &2))
   end
 end
 ```
@@ -42,8 +85,9 @@ defmodule PartOneTest do
   use ExUnit.Case, async: true
   import PartOne
 
-  @input ""
-  @expected nil
+  @input "Time:      7  15   30
+Distance:  9  40  200"
+  @expected 288
 
   test "part one" do
     actual = run(@input)
@@ -68,12 +112,52 @@ PartOne.solve(puzzle_input)
 
 ```elixir
 defmodule PartTwo do
+  def parse_round(input) do
+    [
+      "Time:" <> times,
+      "Distance:" <> distances
+    ] = String.split(input, "\n")
+
+    time =
+      times
+      |> String.trim()
+      |> String.split(" ")
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.join()
+      |> String.to_integer()
+
+    distance =
+      distances
+      |> String.trim()
+      |> String.split(" ")
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.join()
+      |> String.to_integer()
+
+    {time, distance}
+  end
+
+  def test_round({time, distance}) do
+    0..time
+    |> Enum.to_list()
+    |> Enum.filter(fn hold_ms ->
+      speed_mmps = hold_ms
+      remaining_ms = time - hold_ms
+
+      speed_mmps * remaining_ms > distance
+    end)
+    |> Enum.count()
+  end
+
   def solve(input) do
     IO.puts("--- Part Two ---")
     IO.puts("Result: #{run(input)}")
   end
 
   def run(input) do
+    input
+    |> parse_round()
+    |> test_round()
   end
 end
 ```
@@ -87,8 +171,9 @@ defmodule PartTwoTest do
   use ExUnit.Case, async: true
   import PartTwo
 
-  @input ""
-  @expected nil
+  @input "Time:      7  15   30
+Distance:  9  40  200"
+  @expected 71503
 
   test "part two" do
     actual = run(@input)
@@ -105,4 +190,4 @@ ExUnit.run()
 PartTwo.solve(puzzle_input)
 ```
 
-<!-- livebook:{"offset":1483,"stamp":{"token":"XCP.YiNweQA41LRdjh3keJTAugSvHTv_LyDV27dquA4-t7jN5IdTLMahE455xl2AvXDEoKR_7rnAr-UxO5BUXa-UQgSaGI-Bv1pXIKa56aT72_HiJuSnlq8","version":2}} -->
+<!-- livebook:{"offset":3249,"stamp":{"token":"XCP.DLGrSael6jNZHcQ535y4vkuMrMBQbufkoktD_D5PMx5D8y-QXtO4Zr2p_j4AKtvmTBHv_dGuLkprkmXi5O_fTCETMXtu_hj2sDJ1IUxzmKr9zBumShg","version":2}} -->
