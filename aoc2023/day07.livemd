@@ -23,12 +23,95 @@ Mix.install([
 
 ```elixir
 defmodule PartOne do
+  @card_rank %{
+    "A" => 14,
+    "K" => 13,
+    "Q" => 12,
+    "J" => 11,
+    "T" => 10,
+    "9" => 9,
+    "8" => 8,
+    "7" => 7,
+    "6" => 6,
+    "5" => 5,
+    "4" => 4,
+    "3" => 3,
+    "2" => 2
+  }
+
+  @hand_rank %{
+    five_of_a_kind: 7,
+    four_of_a_kind: 6,
+    full_house: 5,
+    three_of_a_kind: 4,
+    two_pair: 3,
+    one_pair: 2,
+    high_card: 1
+  }
+
+  def parse_hand(hand) do
+    [cards, bid] = String.split(hand, " ")
+    cards = String.graphemes(cards)
+    rank = hand_rank(cards)
+
+    %{cards: cards, bid: String.to_integer(bid), rank: rank}
+  end
+
+  def hand_rank(cards) do
+    cards
+    |> Enum.group_by(& &1)
+    |> Enum.map(fn {key, value} -> {key, Enum.count(value)} end)
+    |> Enum.sort_by(&elem(&1, 1), :desc)
+    |> Enum.map(&elem(&1, 1))
+    |> case do
+      [5] -> :five_of_a_kind
+      [4, 1] -> :four_of_a_kind
+      [3, 2] -> :full_house
+      [3, 1, 1] -> :three_of_a_kind
+      [2, 2, 1] -> :two_pair
+      [2, 1, 1, 1] -> :one_pair
+      _ -> :high_card
+    end
+  end
+
+  def sort_hands(hands) do
+    Enum.sort(hands, fn hand1, hand2 ->
+      rank1 = Map.get(@hand_rank, hand1.rank)
+      rank2 = Map.get(@hand_rank, hand2.rank)
+
+      if rank1 == rank2 do
+        0..4
+        |> Enum.to_list()
+        |> Enum.reduce_while(nil, fn index, _acc ->
+          card1 = Map.get(@card_rank, Enum.at(hand1.cards, index))
+          card2 = Map.get(@card_rank, Enum.at(hand2.cards, index))
+
+          if card1 == card2 do
+            {:cont, nil}
+          else
+            {:halt, card1 < card2}
+          end
+        end)
+      else
+        rank1 < rank2
+      end
+    end)
+  end
+
   def solve(input) do
     IO.puts("--- Part One ---")
     IO.puts("Result: #{run(input)}")
   end
 
   def run(input) do
+    input
+    |> String.split("\n")
+    |> Enum.map(&parse_hand/1)
+    |> sort_hands()
+    |> Enum.with_index()
+    |> Enum.reduce(0, fn {hand, index}, total ->
+      hand.bid * (index + 1) + total
+    end)
   end
 end
 ```
@@ -42,8 +125,12 @@ defmodule PartOneTest do
   use ExUnit.Case, async: true
   import PartOne
 
-  @input ""
-  @expected nil
+  @input "32T3K 765
+T55J5 684
+KK677 28
+KTJJT 220
+QQQJA 483"
+  @expected 6440
 
   test "part one" do
     actual = run(@input)
@@ -68,12 +155,106 @@ PartOne.solve(puzzle_input)
 
 ```elixir
 defmodule PartTwo do
+  @card_rank %{
+    "A" => 14,
+    "K" => 13,
+    "Q" => 12,
+    "J" => 1,
+    "T" => 10,
+    "9" => 9,
+    "8" => 8,
+    "7" => 7,
+    "6" => 6,
+    "5" => 5,
+    "4" => 4,
+    "3" => 3,
+    "2" => 2
+  }
+
+  @hand_rank %{
+    five_of_a_kind: 7,
+    four_of_a_kind: 6,
+    full_house: 5,
+    three_of_a_kind: 4,
+    two_pair: 3,
+    one_pair: 2,
+    high_card: 1
+  }
+
+  def parse_hand(hand) do
+    [cards, bid] = String.split(hand, " ")
+    cards = String.graphemes(cards)
+    rank = hand_rank(cards)
+
+    %{cards: cards, bid: String.to_integer(bid), rank: rank}
+  end
+
+  def hand_rank(["J", "J", "J", "J", "J"]), do: :five_of_a_kind
+
+  def hand_rank(cards) do
+    wildcard_count = Enum.count(cards, &(&1 == "J"))
+    cards = Enum.reject(cards, &(&1 == "J"))
+
+    card_counts =
+      cards
+      |> Enum.group_by(& &1)
+      |> Enum.map(fn {key, value} -> {key, Enum.count(value)} end)
+      |> Enum.sort_by(&elem(&1, 1), :desc)
+      |> Enum.map(&elem(&1, 1))
+
+    high_count = Enum.at(card_counts, 0)
+    card_counts = List.replace_at(card_counts, 0, (high_count || 0) + wildcard_count)
+
+    case card_counts do
+      [5] -> :five_of_a_kind
+      [4, 1] -> :four_of_a_kind
+      [3, 2] -> :full_house
+      [3, 1, 1] -> :three_of_a_kind
+      [2, 2, 1] -> :two_pair
+      [2, 1, 1, 1] -> :one_pair
+      _ -> :high_card
+    end
+  end
+
+  def sort_hands(hands) do
+    Enum.sort(hands, fn hand1, hand2 ->
+      rank1 = Map.get(@hand_rank, hand1.rank)
+      rank2 = Map.get(@hand_rank, hand2.rank)
+
+      if rank1 == rank2 do
+        0..4
+        |> Enum.to_list()
+        |> Enum.reduce_while(nil, fn index, _acc ->
+          card1 = Map.get(@card_rank, Enum.at(hand1.cards, index))
+          card2 = Map.get(@card_rank, Enum.at(hand2.cards, index))
+
+          if card1 == card2 do
+            {:cont, nil}
+          else
+            {:halt, card1 < card2}
+          end
+        end)
+      else
+        rank1 < rank2
+      end
+    end)
+  end
+
   def solve(input) do
     IO.puts("--- Part Two ---")
     IO.puts("Result: #{run(input)}")
   end
 
   def run(input) do
+    input
+    |> String.split("\n")
+    |> Enum.map(&parse_hand/1)
+    |> sort_hands()
+    |> IO.inspect(label: "sorted")
+    |> Enum.with_index()
+    |> Enum.reduce(0, fn {hand, index}, total ->
+      hand.bid * (index + 1) + total
+    end)
   end
 end
 ```
@@ -87,8 +268,12 @@ defmodule PartTwoTest do
   use ExUnit.Case, async: true
   import PartTwo
 
-  @input ""
-  @expected nil
+  @input "32T3K 765
+T55J5 684
+KK677 28
+KTJJT 220
+QQQJA 483"
+  @expected 5905
 
   test "part two" do
     actual = run(@input)
@@ -105,4 +290,4 @@ ExUnit.run()
 PartTwo.solve(puzzle_input)
 ```
 
-<!-- livebook:{"offset":1483,"stamp":{"token":"XCP.YiNweQA41LRdjh3keJTAugSvHTv_LyDV27dquA4-t7jN5IdTLMahE455xl2AvXDEoKR_7rnAr-UxO5BUXa-UQgSaGI-Bv1pXIKa56aT72_HiJuSnlq8","version":2}} -->
+<!-- livebook:{"offset":5583,"stamp":{"token":"XCP.xSmUVyIxVGEqRKdxFThHH0FC9qjrc2MOPOIiL85wHEwR9KR8VtRmURu42JXYi6JHZIsSEj5AVkIOYCMgKL6wKCzpAMm3ObgSJC9G-bv3EYBrPkXV1FU","version":2}} -->
